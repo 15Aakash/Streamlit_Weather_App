@@ -2,9 +2,6 @@ import streamlit as st
 import requests
 import openai
 from datetime import datetime
-import matplotlib.pyplot as plt
-import pandas as pd
-
 
 # Function to get weather data from OpenWeatherMap API
 def get_weather_data(city, weather_api_key):
@@ -13,7 +10,6 @@ def get_weather_data(city, weather_api_key):
     response = requests.get(complete_url)
     return response.json()
 
-
 # Mock function to generate a weather description
 def generate_weather_description(data, openai_api_key):
     # Mock response for development and testing
@@ -21,14 +17,12 @@ def generate_weather_description(data, openai_api_key):
     description = data['weather'][0]['description']
     return f"The current weather in your city is: {description} with a temperature of {temperature:.1f} ̊C."
 
-
 # Function to get weekly forecast data from OpenWeatherMap API
 def get_weekly_forecast(weather_api_key, lat, lon):
     base_url = "http://api.openweathermap.org/data/2.5/forecast?"
     complete_url = f"{base_url}lat={lat}&lon={lon}&appid={weather_api_key}"
     response = requests.get(complete_url)
     return response.json()
-
 
 # Function to display weekly weather forecast
 def display_weekly_forecast(data):
@@ -38,45 +32,46 @@ def display_weekly_forecast(data):
             return
 
         st.write("=================================================================================")
-        st.write("### Weekly Weather Forecast")
+        st.write("### Weekly weather Forecast")
+        displayed_dates = set()  # To keep track of dates for which forecast has been displayed
 
-        dates = []
-        min_temps = []
-        max_temps = []
-        descriptions = []
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric("", "Day")
+
+        with c2:
+            st.metric("", "Desc")
+
+        with c3:
+            st.metric("", "Min_temp")
+
+        with c4:
+            st.metric("", "Max_temp")
 
         for day in data['list']:
             date = datetime.fromtimestamp(day['dt']).strftime('%A, %B %d')
-            if date not in dates:
-                dates.append(date)
-                min_temps.append(day['main']['temp_min'] - 273.15)  # Convert Kelvin to Celsius
-                max_temps.append(day['main']['temp_max'] - 273.15)
-                descriptions.append(day['weather'][0]['description'])
+            # Check if the date has already been displayed
+            if date not in displayed_dates:
+                displayed_dates.add(date)
 
-        df = pd.DataFrame({
-            'Date': dates,
-            'Min Temperature (°C)': min_temps,
-            'Max Temperature (°C)': max_temps,
-            'Description': descriptions
-        })
+                min_temp = day['main']['temp_min'] - 273.15  # Convert Kelvin to Celsius
+                max_temp = day['main']['temp_max'] - 273.15
+                description = day['weather'][0]['description']
 
-        st.write(df)
+                with c1:
+                    st.write(f"{date}")
 
-        # Plotting the data
-        plt.figure(figsize=(10, 5))
-        plt.plot(dates, min_temps, label='Min Temperature (°C)', marker='o')
-        plt.plot(dates, max_temps, label='Max Temperature (°C)', marker='o')
-        plt.fill_between(dates, min_temps, max_temps, color='gray', alpha=0.1)
-        plt.xlabel('Date')
-        plt.ylabel('Temperature (°C)')
-        plt.title('Weekly Weather Forecast')
-        plt.legend()
-        plt.xticks(rotation=45)
-        st.pyplot(plt)
+                with c2:
+                    st.write(f"{description.capitalize()}")
+
+                with c3:
+                    st.write(f"{min_temp:.1f} ̊C")
+
+                with c4:
+                    st.write(f"{max_temp:.1f} ̊C")
 
     except Exception as e:
         st.error("Error in displaying weekly forecast: " + str(e))
-
 
 # Main function to run the streamlit app
 def main():
@@ -97,7 +92,7 @@ def main():
     submit = st.sidebar.button("Get Weather")
 
     if submit:
-        st.title("Weather Updates for " + city)
+        st.title("Weather Updates for " + city + " is:")
         with st.spinner('Fetching weather data...'):
             weather_data = get_weather_data(city, weather_api_key)
             print(weather_data)
@@ -111,11 +106,6 @@ def main():
                 with col2:
                     st.metric("Pressure", f"{weather_data['main']['pressure']} hPa")
                     st.metric("Wind Speed", f"{weather_data['wind']['speed']} m/s")
-
-                # Display current temperature as a chart
-                current_temp = weather_data['main']['temp'] - 273.15
-                st.write("### Current Temperature")
-                st.bar_chart(pd.DataFrame([current_temp], columns=['Temperature (°C)']))
 
                 lat = weather_data['coord']['lat']
                 lon = weather_data['coord']['lon']
@@ -135,7 +125,6 @@ def main():
             else:
                 # Display an error message if the city is not found
                 st.error("City not found or an error occurred!")
-
 
 if __name__ == "__main__":
     main()
